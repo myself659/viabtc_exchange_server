@@ -8,6 +8,9 @@
 # include "me_market.h"
 # include "me_balance.h"
 
+/*
+订单与资产信息入库 
+*/
 static sds sql_append_mpd(sds sql, mpd_t *val, bool comma)
 {
     char *str = mpd_to_sci(val, 0);
@@ -19,6 +22,10 @@ static sds sql_append_mpd(sds sql, mpd_t *val, bool comma)
     return sql;
 }
 
+/* 
+订单持久化到mysql
+
+*/
 static int dump_orders_list(MYSQL *conn, const char *table, skiplist_t *list)
 {
     sds sql = sdsempty();
@@ -30,6 +37,7 @@ static int dump_orders_list(MYSQL *conn, const char *table, skiplist_t *list)
     while ((node = skiplist_next(iter)) != NULL) {
         order_t *order = node->value;
         if (index == 0) {
+			/* sql 持久化到数据库 */
             sql = sdscatprintf(sql, "INSERT INTO `%s` (`id`, `t`, `side`, `create_time`, `update_time`, `user_id`, `market`, "
                     "`price`, `amount`, `taker_fee`, `maker_fee`, `left`, `freeze`, `deal_stock`, `deal_money`, `deal_fee`) VALUES ", table);
         } else {
@@ -46,11 +54,11 @@ static int dump_orders_list(MYSQL *conn, const char *table, skiplist_t *list)
         sql = sql_append_mpd(sql, order->freeze, true);
         sql = sql_append_mpd(sql, order->deal_stock, true);
         sql = sql_append_mpd(sql, order->deal_money, true);
-        sql = sql_append_mpd(sql, order->deal_fee, false);
+        sql = sql_append_mpd(sql, order->deal_fee, false); /* 最后一个参数不需要逗号 */
         sql = sdscatprintf(sql, ")");
 
         index += 1;
-        if (index == insert_limit) {
+        if (index == insert_limit) { /* 一次最多插入1000条 */
             log_trace("exec sql: %s", sql);
             int ret = mysql_real_query(conn, sql, sdslen(sql));
             if (ret < 0) {

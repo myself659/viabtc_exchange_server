@@ -1,0 +1,12 @@
+---- business_id Matches (12 in 4 files) ----
+Me_load.c (matchengine):    // business_id
+Me_load.c (matchengine):    uint64_t business_id = json_integer_value(json_array_get(params, 3));
+Me_load.c (matchengine):    int ret = update_user_balance(false, user_id, asset, business, business_id, change, detail);
+Me_server.c (matchengine):    // business_id
+Me_server.c (matchengine):    uint64_t business_id = json_integer_value(json_array_get(params, 3));
+Me_server.c (matchengine):    int ret = update_user_balance(true, user_id, asset, business, business_id, change, detail);
+Me_update.c (matchengine):    uint64_t    business_id;  /* ÒµÎñID */
+Me_update.c (matchengine):int update_user_balance(bool real, uint32_t user_id, const char *asset, const char *business, uint64_t business_id, mpd_t *change, json_t *detail)
+Me_update.c (matchengine):    key.business_id = business_id;
+Me_update.c (matchengine):        json_object_set_new(detail, "id", json_integer(business_id));
+Me_update.h (matchengine):int update_user_balance(bool real, uint32_t user_id, const char *asset, const char *business, uint64_t business_id, mpd_t *change, json_t *detail);

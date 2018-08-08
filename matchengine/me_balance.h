@@ -8,6 +8,7 @@
 
 # include "me_config.h"
 
+/* 余额类型  */
 # define BALANCE_TYPE_AVAILABLE 1
 # define BALANCE_TYPE_FREEZE    2
 
@@ -15,7 +16,7 @@ extern dict_t *dict_balance;
 
 struct balance_key {
     uint32_t    user_id;
-    uint32_t    type;
+    uint32_t    type; /* 资产类型 */
     char        asset[ASSET_NAME_MAX_LEN + 1];
 };
 

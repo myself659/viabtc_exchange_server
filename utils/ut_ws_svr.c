@@ -12,12 +12,15 @@
 # include "ut_ws_svr.h"
 
 struct ws_frame {
-    uint8_t     fin;
+    uint8_t     fin; /* 标记一个消息结束帧 */
     uint8_t     opcode;
     uint64_t    payload_len;
     void        *payload;
 };
 
+/*
+websocket context信息
+*/
 struct clt_info {
     nw_ses      *ses;
     void        *privdata;
@@ -32,7 +35,7 @@ struct clt_info {
     sds         url;
     sds         message;
     http_request_t *request;
-    struct ws_frame frame;
+    struct ws_frame frame; /* 当前frame信息 */
 };
 
 static int on_http_message_begin(http_parser* parser)
@@ -170,8 +173,8 @@ static int on_http_message_complete(http_parser* parser)
             goto error;
     }
     info->upgrade = true;
-    info->remote = sdsnew(http_get_remote_ip(info->ses, info->request));
-    info->url = sdsnew(info->request->url);
+    info->remote = sdsnew(http_get_remote_ip(info->ses, info->request)); 	/* 对端ip */
+    info->url = sdsnew(info->request->url); 	/* 从http获取url地址 */
     if (svr->type.on_upgrade) {
         svr->type.on_upgrade(info->ses, info->remote);
     }
@@ -416,6 +419,7 @@ static int send_reply(nw_ses *ses, uint8_t opcode, void *payload, size_t payload
 
 static int send_pong_message(nw_ses *ses)
 {
+	/* 0xa pong报文 */
     return send_reply(ses, 0xa, NULL, 0);
 }
 
@@ -439,7 +443,7 @@ static void on_recv_pkg(nw_ses *ses, void *data, size_t size)
     case 0x8:
         nw_svr_close_clt(svr->raw_svr, ses);
         return;
-    case 0x9:
+    case 0x9: /* ping报文 */
         send_pong_message(ses);
         return;
     case 0xa:
@@ -448,6 +452,7 @@ static void on_recv_pkg(nw_ses *ses, void *data, size_t size)
 
     if (info->message == NULL)
         info->message = sdsempty();
+	/* 将帧内容连接起来 */
     info->message = sdscatlen(info->message, info->frame.payload, info->frame.payload_len);
     if (info->frame.fin) {
         int ret = svr->type.on_message(ses, info->remote, info->url, info->message, sdslen(info->message));

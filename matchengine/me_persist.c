@@ -24,7 +24,9 @@ static time_t get_today_start(void)
     t.tm_mday = lt->tm_mday;
     return mktime(&t);
 }
-
+/*
+获取最新slice 
+*/
 static int get_last_slice(MYSQL *conn, time_t *timestamp, uint64_t *last_oper_id, uint64_t *last_order_id, uint64_t *last_deals_id)
 {
     sds sql = sdsempty();
@@ -371,7 +373,9 @@ cleanup:
     mysql_close(conn);
     return ret;
 }
-
+/*
+启动进程 
+*/
 int make_slice(time_t timestamp)
 {
     int pid = fork();
@@ -399,7 +403,8 @@ int make_slice(time_t timestamp)
 
 static void on_timer(nw_timer *timer, void *privdata)
 {
-    time_t now = time(NULL);
+    time_t now = time(NULL);// 秒为单位
+    /* 1个小时才保存一次数据库，这个有点坑吧  */ 
     if ((now - last_slice_time) >= settings.slice_interval && (now % settings.slice_interval) <= 5) {
         make_slice(now);
         last_slice_time = now;

@@ -13,9 +13,9 @@ int init_message(void);
 int fini_message(void);
 
 enum {
-    ORDER_EVENT_PUT     = 1,
-    ORDER_EVENT_UPDATE  = 2,
-    ORDER_EVENT_FINISH  = 3,
+    ORDER_EVENT_PUT     = 1, /* 添加订单 */
+    ORDER_EVENT_UPDATE  = 2, /* 更新订单 */
+    ORDER_EVENT_FINISH  = 3, /* 结束订单 */
 };
 
 int push_balance_message(double t, uint32_t user_id, const char *asset, const char *business, mpd_t *change);

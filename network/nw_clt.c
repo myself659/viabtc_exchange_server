@@ -223,6 +223,9 @@ nw_clt *nw_clt_create(nw_clt_cfg *cfg, nw_clt_type *type, void *privdata)
     return clt;
 }
 
+/*
+Æô¶¯ÕìÌý
+*/
 int nw_clt_start(nw_clt *clt)
 {
     int sockfd = create_socket(clt->ses.peer_addr.family, clt->ses.sock_type);

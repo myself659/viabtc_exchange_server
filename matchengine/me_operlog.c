@@ -6,11 +6,11 @@
 # include "me_config.h"
 # include "me_operlog.h"
 
-uint64_t operlog_id_start;
+uint64_t operlog_id_start; /* oplog id */ 
 
 static MYSQL *mysql_conn;
 static nw_job *job;
-static list_t *list;
+static list_t *list; /* log job 队列 */
 static nw_timer timer;
 
 struct operlog {
@@ -94,9 +94,10 @@ static void flush_log(void)
         }
         list_del(list, node);
         count++;
+		/* sql 语句是有长度限制的 不能一次批量太多  时间短，订单也不会太多 */
     }
     list_release_iterator(iter);
-    nw_job_add(job, 0, sql);
+    nw_job_add(job, 0, sql); /* 添加job */
     log_debug("flush oper log count: %zu", count);
 }
 
@@ -106,7 +107,7 @@ static void on_timer(nw_timer *t, void *privdata)
         flush_log();
     }
 }
-
+/* 定时任务 */
 int init_operlog(void)
 {
     mysql_conn = mysql_init(NULL);
@@ -133,7 +134,7 @@ int init_operlog(void)
     if (list == NULL)
         return -__LINE__;
 
-    nw_timer_set(&timer, 0.1, true, on_timer, NULL);
+    nw_timer_set(&timer, 0.1, true, on_timer, NULL); /* 100ms 执行一次 */
     nw_timer_start(&timer);
 
     return 0;

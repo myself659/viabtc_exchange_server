@@ -40,6 +40,7 @@ static void produce_list(list_t *list, rd_kafka_topic_t *topic)
     list_node *node;
     list_iter *iter = list_get_iterator(list, LIST_START_HEAD);
     while ((node = list_next(iter)) != NULL) {
+		/* kafka 写入 topic content */
         int ret = rd_kafka_produce(topic, 0, RD_KAFKA_MSG_F_COPY, node->value, strlen(node->value), NULL, 0, NULL);
         if (ret == -1) {
             log_fatal("Failed to produce: %s to topic %s: %s\n", (char *)node->value,
@@ -150,7 +151,10 @@ static json_t *json_array_append_mpd(json_t *message, mpd_t *val)
     free(str);
     return message;
 }
-
+/*
+push_message
+作为producer推送信息
+*/
 static int push_message(char *message, rd_kafka_topic_t *topic, list_t *list)
 {
     log_trace("push %s message: %s", rd_kafka_topic_name(topic), message);

@@ -9,13 +9,16 @@
 # include <stdint.h>
 # include "ut_decimal.h"
 
+/*
+k线信息
+*/
 struct kline_info {
     mpd_t *open;
     mpd_t *close;
     mpd_t *high;
     mpd_t *low;
     mpd_t *volume;
-    mpd_t *deal;
+    mpd_t *deal; /* 与交易量有什么不一样 */
 };
 
 struct kline_info *kline_info_new(mpd_t *open);

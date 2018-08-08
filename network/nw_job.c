@@ -15,6 +15,9 @@ struct thread_arg {
     void *privdata;
 };
 
+/*
+线程loop
+*/
 static void *thread_routine(void *data)
 {
     struct thread_arg *arg = data;
@@ -31,6 +34,7 @@ static void *thread_routine(void *data)
             break;
         }
         assert(job->request_head != NULL);
+		/* get req job */
         nw_job_entry *entry = job->request_head;
         job->request_head = entry->next;
         if (job->request_head) {
@@ -40,10 +44,12 @@ static void *thread_routine(void *data)
         }
         job->request_count -= 1;
         pthread_mutex_unlock(&job->lock);
-
+		/* do job */
         job->type.on_job(entry, privdata);
 
         pthread_mutex_lock(&job->lock);
+
+		/* add reply job */
         if (job->reply_tail) {
             entry->prev = job->reply_tail;
             entry->next = NULL;
@@ -90,10 +96,13 @@ static void on_can_read(struct ev_loop *loop, ev_io *watcher, int events)
         job->reply_count -= 1;
         pthread_mutex_unlock(&job->lock);
 
-        if (job->type.on_finish)
+        if (job->type.on_finish){
+			/* 回应处理 */
             job->type.on_finish(entry);
-        if (job->type.on_cleanup)
+        }
+        if (job->type.on_cleanup){
             job->type.on_cleanup(entry);
+        }
         nw_cache_free(job->cache, entry);
     }
 }
@@ -145,8 +154,10 @@ nw_job *nw_job_create(nw_job_type *type, int thread_count)
         nw_job_free(job);
         return NULL;
     }
+	/* 设置非阻塞  */
     nw_sock_set_nonblock(job->pipefd[0]);
     nw_sock_set_nonblock(job->pipefd[1]);
+	/* 加入epoll */
     ev_io_init(&job->ev, on_can_read, job->pipefd[0], EV_READ);
     ev_io_start(job->loop, &job->ev);
 

@@ -9,6 +9,10 @@
 # include "me_update.h"
 # include "me_balance.h"
 
+/*
+从数据库下载订单
+先保证不丢数据 再提高交易速度 
+*/
 int load_orders(MYSQL *conn, const char *table)
 {
     size_t query_limit = 1000;
@@ -113,6 +117,7 @@ int load_balance(MYSQL *conn, const char *table)
     return 0;
 }
 
+/* 更新资产 */
 static int load_update_balance(json_t *params)
 {
     if (json_array_size(params) != 6)
@@ -134,7 +139,7 @@ static int load_update_balance(json_t *params)
     // business
     if (!json_is_string(json_array_get(params, 2)))
         return -__LINE__;
-    const char *business = json_string_value(json_array_get(params, 2));
+    const char *business = json_string_value(json_array_get(params, 2)); /* 充币成功 提币成功  */
 
     // business_id
     if (!json_is_integer(json_array_get(params, 3)))
@@ -391,14 +396,18 @@ static int load_oper(json_t *detail)
     return ret;
 }
 
+/* 处理操作log */
 int load_operlog(MYSQL *conn, const char *table, uint64_t *start_id)
 {
-    size_t query_limit = 1000;
+    size_t query_limit = 1000; /* 每次最多处理1000条log  */
+	/* 保存上次id */
     uint64_t last_id = *start_id;
     while (true) {
         sds sql = sdsempty();
+		/* 升序排列 */
         sql = sdscatprintf(sql, "SELECT `id`, `detail` from `%s` WHERE `id` > %"PRIu64" ORDER BY `id` LIMIT %zu", table, last_id, query_limit);
         log_trace("exec sql: %s", sql);
+		/* 执行sql */
         int ret = mysql_real_query(conn, sql, sdslen(sql));
         if (ret != 0) {
             log_error("exec sql: %s fail: %d %s", sql, mysql_errno(conn), mysql_error(conn));
@@ -406,17 +415,21 @@ int load_operlog(MYSQL *conn, const char *table, uint64_t *start_id)
             return -__LINE__;
         }
         sdsfree(sql);
-
+	    /* 保存结果 */
         MYSQL_RES *result = mysql_store_result(conn);
         size_t num_rows = mysql_num_rows(result);
         for (size_t i = 0; i < num_rows; ++i) {
+			/* 读取结果 */
             MYSQL_ROW row = mysql_fetch_row(result);
+			
             uint64_t id = strtoull(row[0], NULL, 0);
             if (id != last_id + 1) {
                 log_error("invalid id: %"PRIu64", last id: %"PRIu64"", id, last_id);
                 return -__LINE__;
             }
+			/* 每次更新ID */
             last_id = id;
+			/* 获取详情 */
             json_t *detail = json_loadb(row[1], strlen(row[1]), 0, NULL);
             if (detail == NULL) {
                 log_error("invalid detail data: %s", row[1]);
@@ -433,11 +446,11 @@ int load_operlog(MYSQL *conn, const char *table, uint64_t *start_id)
             json_decref(detail);
         }
         mysql_free_result(result);
-
+		/* 读取完成 退出循环 */
         if (num_rows < query_limit)
             break;
     }
-
+	/* 更新起始ID */
     *start_id = last_id;
     return 0;
 }

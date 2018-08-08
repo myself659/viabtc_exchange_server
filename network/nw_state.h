@@ -36,6 +36,10 @@ typedef struct nw_state_type {
     void (*on_release)(nw_state_entry *entry);
 } nw_state_type;
 
+
+/*
+ÍøÂç×´Ì¬
+*/
 typedef struct nw_state {
     struct ev_loop *loop;
     nw_state_type type;

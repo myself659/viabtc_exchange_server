@@ -47,7 +47,7 @@ static int reply_json(nw_ses *ses, rpc_pkg *pkg, const json_t *json)
 
 static int reply_error(nw_ses *ses, rpc_pkg *pkg, int code, const char *message)
 {
-    json_t *error = json_object();
+    json_t *error = json_object(); /* 不会出现内存泄漏 */
     json_object_set_new(error, "code", json_integer(code));
     json_object_set_new(error, "message", json_string(message));
 
@@ -90,6 +90,9 @@ static int reply_result(nw_ses *ses, rpc_pkg *pkg, json_t *result)
     return ret;
 }
 
+/* 
+返回成功 
+*/
 static int reply_success(nw_ses *ses, rpc_pkg *pkg)
 {
     json_t *result = json_object();
@@ -135,6 +138,10 @@ static int add_cache(sds cache_key, json_t *result)
     return 0;
 }
 
+/*
+查询用户余额
+[userid]
+*/
 static int on_cmd_balance_query(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
     size_t request_size = json_array_size(params);
@@ -143,12 +150,13 @@ static int on_cmd_balance_query(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 
     if (!json_is_integer(json_array_get(params, 0)))
         return reply_error_invalid_argument(ses, pkg);
+	/* 获取用户id */
     uint32_t user_id = json_integer_value(json_array_get(params, 0));
     if (user_id == 0)
         return reply_error_invalid_argument(ses, pkg);
 
     json_t *result = json_object();
-    if (request_size == 1) {
+    if (request_size == 1) {/* 获取所有资产 */
         for (size_t i = 0; i < settings.asset_num; ++i) {
             const char *asset = settings.assets[i].name;
             json_t *unit = json_object();
@@ -233,6 +241,9 @@ static int on_cmd_balance_query(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     return ret;
 }
 
+/*
+帐户余额更新
+*/ 
 static int on_cmd_balance_update(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
     if (json_array_size(params) != 6)
@@ -259,16 +270,16 @@ static int on_cmd_balance_update(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     // business_id
     if (!json_is_integer(json_array_get(params, 3)))
         return reply_error_invalid_argument(ses, pkg);
-    uint64_t business_id = json_integer_value(json_array_get(params, 3));
+    uint64_t business_id = json_integer_value(json_array_get(params, 3)); /* 交易id 提币id 业务信息与撮合无关 */
 
-    // change
+    // change  正负浮点数字符串
     if (!json_is_string(json_array_get(params, 4)))
         return reply_error_invalid_argument(ses, pkg);
     mpd_t *change = decimal(json_string_value(json_array_get(params, 4)), prec);
     if (change == NULL)
         return reply_error_invalid_argument(ses, pkg);
 
-    // detail
+    // detail  业务详细情况
     json_t *detail = json_array_get(params, 5);
     if (!json_is_object(detail)) {
         mpd_del(change);
@@ -285,7 +296,7 @@ static int on_cmd_balance_update(nw_ses *ses, rpc_pkg *pkg, json_t *params)
         return reply_error_internal_error(ses, pkg);
     }
 
-    append_operlog("update_balance", params);
+    append_operlog("update_balance", params); /* 并没有保证落盘 */
     return reply_success(ses, pkg);
 }
 
@@ -294,7 +305,9 @@ static int on_cmd_asset_list(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     json_t *result = json_array();
     for (int i = 0; i < settings.asset_num; ++i) {
         json_t *asset = json_object();
+		/* 资产列表 */
         json_object_set_new(asset, "name", json_string(settings.assets[i].name));
+		/* precision 显示精度 */
         json_object_set_new(asset, "prec", json_integer(settings.assets[i].prec_show));
         json_array_append_new(result, asset);
     }
@@ -304,6 +317,9 @@ static int on_cmd_asset_list(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     return ret;
 }
 
+/*
+获取指定资产
+*/
 static json_t *get_asset_summary(const char *name)
 {
     size_t available_count;
@@ -331,11 +347,14 @@ static json_t *get_asset_summary(const char *name)
 static int on_cmd_asset_summary(nw_ses *ses, rpc_pkg *pkg, json_t *params)
 {
     json_t *result = json_array();
+
     if (json_array_size(params) == 0) {
+			/* 没有指定资产 */
         for (int i = 0; i < settings.asset_num; ++i) {
             json_array_append_new(result, get_asset_summary(settings.assets[i].name));
         }
     } else {
+    	/* 指定资产 */
         for (int i = 0; i < json_array_size(params); ++i) {
             const char *asset = json_string_value(json_array_get(params, i));
             if (asset == NULL)
@@ -345,7 +364,7 @@ static int on_cmd_asset_summary(nw_ses *ses, rpc_pkg *pkg, json_t *params)
             json_array_append_new(result, get_asset_summary(asset));
         }
     }
-
+	/* result作为数组  */
     int ret = reply_result(ses, pkg, result);
     json_decref(result);
     return ret;
@@ -429,6 +448,7 @@ static int on_cmd_order_put_limit(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     mpd_del(maker_fee);
 
     if (ret == -1) {
+		/* 统一的错误码定义 */
         return reply_error(ses, pkg, 10, "balance not enough");
     } else if (ret == -2) {
         return reply_error(ses, pkg, 11, "amount too small");
@@ -718,17 +738,18 @@ static json_t *get_depth(market_t *market, size_t limit)
     mpd_t *amount = mpd_new(&mpd_ctx);
 
     json_t *asks = json_array();
-    skiplist_iter *iter = skiplist_get_iterator(market->asks);
+    skiplist_iter *iter = skiplist_get_iterator(market->asks); /* 这里面是按价格排序的吗 */
     skiplist_node *node = skiplist_next(iter);
     size_t index = 0;
     while (node && index < limit) {
         index++;
+		/* 订单 */
         order_t *order = node->value;
         mpd_copy(price, order->price, &mpd_ctx);
-        mpd_copy(amount, order->left, &mpd_ctx);
+        mpd_copy(amount, order->left, &mpd_ctx); /* 从left获取数量，订单并不会拆单的 */
         while ((node = skiplist_next(iter)) != NULL) {
             order = node->value;
-            if (mpd_cmp(price, order->price, &mpd_ctx) == 0) {
+            if (mpd_cmp(price, order->price, &mpd_ctx) == 0) { /* 相同价格的订单放到一起 */
                 mpd_add(amount, amount, order->left, &mpd_ctx);
             } else {
                 break;
@@ -737,7 +758,7 @@ static json_t *get_depth(market_t *market, size_t limit)
         json_t *info = json_array();
         json_array_append_new_mpd(info, price);
         json_array_append_new_mpd(info, amount);
-        json_array_append_new(asks, info);
+        json_array_append_new(asks, info); /* 卖单 */
     }
     skiplist_release_iterator(iter);
 
@@ -761,7 +782,7 @@ static json_t *get_depth(market_t *market, size_t limit)
         json_t *info = json_array();
         json_array_append_new_mpd(info, price);
         json_array_append_new_mpd(info, amount);
-        json_array_append_new(bids, info);
+        json_array_append_new(bids, info); /* 买单 */
     }
     skiplist_release_iterator(iter);
 
@@ -777,8 +798,8 @@ static json_t *get_depth(market_t *market, size_t limit)
 
 static json_t *get_depth_merge(market_t* market, size_t limit, mpd_t *interval)
 {
-    mpd_t *q = mpd_new(&mpd_ctx);
-    mpd_t *r = mpd_new(&mpd_ctx);
+    mpd_t *q = mpd_new(&mpd_ctx);  		/* 除法商 */
+    mpd_t *r = mpd_new(&mpd_ctx);  		/* 除法余数 */
     mpd_t *price = mpd_new(&mpd_ctx);
     mpd_t *amount = mpd_new(&mpd_ctx);
 
@@ -792,7 +813,7 @@ static json_t *get_depth_merge(market_t* market, size_t limit, mpd_t *interval)
         mpd_divmod(q, r, order->price, interval, &mpd_ctx);
         mpd_mul(price, q, interval, &mpd_ctx);
         if (mpd_cmp(r, mpd_zero, &mpd_ctx) != 0) {
-            mpd_add(price, price, interval, &mpd_ctx);
+            mpd_add(price, price, interval, &mpd_ctx); /* 余数不为0，价格要加interval */
         }
         mpd_copy(amount, order->left, &mpd_ctx);
         while ((node = skiplist_next(iter)) != NULL) {
@@ -844,7 +865,12 @@ static json_t *get_depth_merge(market_t* market, size_t limit, mpd_t *interval)
     json_t *result = json_object();
     json_object_set_new(result, "asks", asks);
     json_object_set_new(result, "bids", bids);
-
+	/*
+	{
+	"bids":[ [price, amount],[price, amount] ],
+	"asks":[ [price, amount],[price, amount] ],
+	}
+	*/
     return result;
 }
 
@@ -868,7 +894,7 @@ static int on_cmd_order_book_depth(nw_ses *ses, rpc_pkg *pkg, json_t *params)
     if (limit > ORDER_BOOK_MAX_LEN)
         return reply_error_invalid_argument(ses, pkg);
 
-    // interval
+    // interval 大于0表示间隔
     if (!json_is_string(json_array_get(params, 2)))
         return reply_error_invalid_argument(ses, pkg);
     mpd_t *interval = decimal(json_string_value(json_array_get(params, 2)), market->money_prec);
@@ -1008,6 +1034,7 @@ invalid_argument:
 
 static void svr_on_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
 {
+	/* 解析参数 */
     json_t *params = json_loadb(pkg->body, pkg->body_size, 0, NULL);
     if (params == NULL || !json_is_array(params)) {
         goto decode_error;
@@ -1024,6 +1051,7 @@ static void svr_on_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
         }
         break;
     case CMD_BALANCE_UPDATE:
+		/* 拒绝服务 */
         if (is_operlog_block() || is_history_block() || is_message_block()) {
             log_fatal("service unavailable, operlog: %d, history: %d, message: %d",
                     is_operlog_block(), is_history_block(), is_message_block());

@@ -85,10 +85,12 @@ typedef struct nw_svr_type {
      * called when on_privdata_alloc is set and the connection is closed */
     void (*on_privdata_free)(void *svr, void *privdata);
 } nw_svr_type;
-
+/*
+网络服务Desc
+*/
 typedef struct nw_svr {
-    uint32_t svr_count;
-    nw_ses *svr_list;
+    uint32_t svr_count; /* 实例个数 */
+    nw_ses *svr_list;   /* 实例列表 */
     nw_svr_type type;
     nw_buf_pool *buf_pool;
     nw_cache *clt_cache;

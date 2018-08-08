@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
     if (ret < 0) {
         error(EXIT_FAILURE, errno, "init log fail: %d", ret);
     }
-
+	/* 支持多进程  */
     for (int i = 0; i < settings.worker_num; ++i) {
         int pid = fork();
         if (pid < 0) {

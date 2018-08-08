@@ -24,6 +24,10 @@ enum {
     NW_SES_TYPE_SERVER, /* server side */
 };
 
+/*
+网络连接会话 
+依赖libev
+*/
 typedef struct nw_ses {
     /* the libev instance */
     ev_io ev;

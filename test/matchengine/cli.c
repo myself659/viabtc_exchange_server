@@ -30,16 +30,19 @@ int main(int argc, char *argv[])
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
+	/* 第1参数 地址 */
     if (inet_aton(argv[1], &addr.sin_addr) == 0) {
         error(1, errno, "ip error");
     }
+	/* 第2参数 端口 */
     addr.sin_port = htons(atoi(argv[2]));
 
     rpc_pkg req;
     memset(&req, 0, sizeof(req));
+	/* 第3参数 命令  */
     req.command = strtoul(argv[3], NULL, 0);
     req.pkg_type = RPC_PKG_TYPE_REQUEST;
-    req.body = argv[4];
+    req.body = argv[4];  /* 第4参数 命令参数 */
     req.body_size = strlen(argv[4]);
 
     void *data;

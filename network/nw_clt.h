@@ -71,6 +71,7 @@ typedef struct nw_clt_type {
     void (*on_error_msg)(nw_ses *ses, const char *msg);
 } nw_clt_type;
 
+/* network desc */
 typedef struct nw_clt {
     nw_ses ses;
     nw_clt_type type;

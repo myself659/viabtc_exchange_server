@@ -14,10 +14,14 @@
 static nw_job *job_context;
 static nw_state *state_context;
 
+/* 
+登录
+
+*/
 struct sign_request {
-    sds access_id;
-    sds authorisation;
-    uint64_t tonce;
+    sds access_id;		/* 访问id  */
+    sds authorisation;  /* 授权 用户登录信息 用户名与密码 加密算法 */
+    uint64_t tonce; 	/* 时间  */
 };
 
 struct state_data {
@@ -45,6 +49,7 @@ static void on_job(nw_job_entry *entry, void *privdata)
     struct curl_slist *chunk = NULL;
 
     char *access_id = curl_easy_escape(curl, request->access_id, 0);
+	/* 拼装url   PRIu64格式 */
     url = sdscatprintf(url, "%s?access_id=%s&tonce=%"PRIu64, settings.sign_url, access_id, request->tonce);
     free(access_id);
 
@@ -65,7 +70,7 @@ static void on_job(nw_job_entry *entry, void *privdata)
         log_fatal("curl_easy_perform fail: %s", curl_easy_strerror(ret));
         goto cleanup;
     }
-
+	/* 解析结果 */
     json_t *result = json_loads(reply, 0, NULL);
     if (result == NULL)
         goto cleanup;
@@ -104,6 +109,7 @@ static void on_result(struct state_data *state, struct sign_request *request, js
     if (data == NULL)
         goto error;
     struct clt_info *info = state->info;
+	/* 检查user-id */
     uint32_t user_id = json_integer_value(json_object_get(data, "user_id"));
     if (user_id == 0)
         goto error;

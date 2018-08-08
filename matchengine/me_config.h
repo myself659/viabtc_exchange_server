@@ -49,9 +49,9 @@
 # define MAX_PENDING_MESSAGE    1000
 
 struct asset {
-    char                *name;
-    int                 prec_save;
-    int                 prec_show;
+    char                *name;   /* 名字 */
+    int                 prec_save; /* 保存的精度 */
+    int                 prec_show; /* 显示的精度 */
 };
 
 struct market {

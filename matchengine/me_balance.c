@@ -5,8 +5,8 @@
 
 # include "me_config.h"
 # include "me_balance.h"
-
-dict_t *dict_balance;
+/* 余额 所有资产统一  分开管理，显示的时候也是分开显示的  各个资产分开管理 */
+dict_t *dict_balance;  
 static dict_t *dict_asset;
 
 struct asset_type {
@@ -154,6 +154,12 @@ int asset_prec_show(const char *asset)
     return at ? at->prec_show: -1;
 }
 
+/*
+user_id 用户类型
+type    资产类型
+asset   资产名称
+*/
+
 mpd_t *balance_get(uint32_t user_id, uint32_t type, const char *asset)
 {
     struct balance_key key;
@@ -168,6 +174,11 @@ mpd_t *balance_get(uint32_t user_id, uint32_t type, const char *asset)
 
     return NULL;
 }
+/*
+user_id 用户类型
+type    资产类型
+asset   资产名称
+*/
 
 void balance_del(uint32_t user_id, uint32_t type, const char *asset)
 {
@@ -177,6 +188,13 @@ void balance_del(uint32_t user_id, uint32_t type, const char *asset)
     strncpy(key.asset, asset, sizeof(key.asset));
     dict_delete(dict_balance, &key);
 }
+
+/*
+user_id 用户类型
+type    资产类型
+asset   资产名称
+amount  金额
+*/
 
 mpd_t *balance_set(uint32_t user_id, uint32_t type, const char *asset, mpd_t *amount)
 {
@@ -215,6 +233,12 @@ mpd_t *balance_set(uint32_t user_id, uint32_t type, const char *asset, mpd_t *am
     return result;
 }
 
+/*
+user_id 用户类型
+type    资产类型
+asset   资产名称
+amount  金额
+*/
 mpd_t *balance_add(uint32_t user_id, uint32_t type, const char *asset, mpd_t *amount)
 {
     struct asset_type *at = get_asset_type(asset);
@@ -241,6 +265,12 @@ mpd_t *balance_add(uint32_t user_id, uint32_t type, const char *asset, mpd_t *am
     return balance_set(user_id, type, asset, amount);
 }
 
+/*
+user_id 用户类型
+type    资产类型
+asset   资产名称
+amount  金额
+*/
 mpd_t *balance_sub(uint32_t user_id, uint32_t type, const char *asset, mpd_t *amount)
 {
     struct asset_type *at = get_asset_type(asset);
@@ -266,6 +296,12 @@ mpd_t *balance_sub(uint32_t user_id, uint32_t type, const char *asset, mpd_t *am
     return result;
 }
 
+/*
+资产冻结
+user_id 用户
+asset   资产描述
+amount  金额
+*/
 mpd_t *balance_freeze(uint32_t user_id, const char *asset, mpd_t *amount)
 {
     struct asset_type *at = get_asset_type(asset);
@@ -292,6 +328,12 @@ mpd_t *balance_freeze(uint32_t user_id, const char *asset, mpd_t *amount)
     return available;
 }
 
+/*
+解冻处理
+user_id 用户
+asset   资产描述
+amount  金额
+*/
 mpd_t *balance_unfreeze(uint32_t user_id, const char *asset, mpd_t *amount)
 {
     struct asset_type *at = get_asset_type(asset);
@@ -318,6 +360,10 @@ mpd_t *balance_unfreeze(uint32_t user_id, const char *asset, mpd_t *amount)
     return freeze;
 }
 
+/*
+用户资产指定余额
+*/
+
 mpd_t *balance_total(uint32_t user_id, const char *asset)
 {
     mpd_t *balance = mpd_new(&mpd_ctx);
@@ -333,6 +379,10 @@ mpd_t *balance_total(uint32_t user_id, const char *asset)
 
     return balance;
 }
+
+/*
+通过缓存查询系统余额
+*/
 
 int balance_status(const char *asset, mpd_t *total, size_t *available_count, mpd_t *available, size_t *freeze_count, mpd_t *freeze)
 {
@@ -351,10 +401,10 @@ int balance_status(const char *asset, mpd_t *total, size_t *available_count, mpd
         mpd_add(total, total, entry->val, &mpd_ctx);
         if (key->type == BALANCE_TYPE_AVAILABLE) {
             *available_count += 1;
-            mpd_add(available, available, entry->val, &mpd_ctx);
+            mpd_add(available, available, entry->val, &mpd_ctx); /* 总量统计 */
         } else {
-            *freeze_count += 1;
-            mpd_add(freeze, freeze, entry->val, &mpd_ctx);
+            *freeze_count += 1; /* 数量加1 */
+            mpd_add(freeze, freeze, entry->val, &mpd_ctx);  /* 总量统计 */
         }
     }
     dict_release_iterator(iter);

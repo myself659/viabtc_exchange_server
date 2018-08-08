@@ -221,7 +221,7 @@ static void on_can_read(nw_ses *ses)
                     ses->on_close(ses);
                     return;
                 }
-
+				/* 从内核中读取fd */
                 struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msg);
                 if (cmsg != NULL) {
                     if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type==SCM_RIGHTS) {
@@ -487,6 +487,9 @@ int nw_ses_send(nw_ses *ses, const void *data, size_t size)
     return 0;
 }
 
+/*
+保存fd到内核
+*/
 int nw_ses_send_fd(nw_ses *ses, int fd)
 {
     if (ses->sockfd < 0 || ses->sock_type != SOCK_SEQPACKET) {

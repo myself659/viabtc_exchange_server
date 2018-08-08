@@ -16,11 +16,19 @@ static nw_state *state_context;
 
 struct state_data {
     nw_ses *ses;
-    uint64_t ses_id;
-    uint64_t request_id;
-    struct clt_info *info;
+    uint64_t ses_id; /* 会话id，主要记录前一个会话id */
+    uint64_t request_id; /* 请求id */
+    struct clt_info *info; /* 用户信息 */
 };
 
+/*
+接收数据回调函数 
+
+ptr 数据指针 
+
+userdata 指定数据地址 
+
+*/
 static size_t post_write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     sds *reply = userdata;
@@ -35,16 +43,21 @@ static void on_job(nw_job_entry *entry, void *privdata)
     sds token = sdsempty();
     struct curl_slist *chunk = NULL;
     token = sdscatprintf(token, "Authorization: %s", (sds)entry->request);
+	/* http头加token */
     chunk = curl_slist_append(chunk, token);
     chunk = curl_slist_append(chunk, "Accept-Language: en_US");
     chunk = curl_slist_append(chunk, "Content-Type: application/json");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	/* 授权地址 */
     curl_easy_setopt(curl, CURLOPT_URL, settings.auth_url);
+	/* 接收数据处理 */
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, post_write_callback);
+	/* 接收数据地址 */
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &reply);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)(settings.backend_timeout * 1000));
 
+	/* 发起http请求 */
     CURLcode ret = curl_easy_perform(curl);
     if (ret != CURLE_OK) {
         log_fatal("curl_easy_perform fail: %s", curl_easy_strerror(ret));
@@ -63,6 +76,9 @@ cleanup:
     curl_slist_free_all(chunk);
 }
 
+/*
+结果处理
+*/
 static void on_result(struct state_data *state, sds token, json_t *result)
 {
     if (state->ses->id != state->ses_id)
@@ -136,13 +152,18 @@ static void on_timeout(nw_state_entry *entry)
     }
 }
 
+/* 发送认证请求 */
 int send_auth_request(nw_ses *ses, uint64_t id, struct clt_info *info, json_t *params)
 {
     if (json_array_size(params) != 2)
         return send_error_invalid_argument(ses, id);
+
+	/* token  */
     const char *token = json_string_value(json_array_get(params, 0));
     if (token == NULL)
         return send_error_invalid_argument(ses, id);
+
+	/* source */
     const char *source = json_string_value(json_array_get(params, 1));
     if (source == NULL || strlen(source) >= SOURCE_MAX_LEN)
         return send_error_invalid_argument(ses, id);

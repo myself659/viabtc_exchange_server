@@ -117,9 +117,9 @@ static int on_order_deals_reply(struct state_data *state, json_t *result)
     json_array_append_new(params, json_string(state->market));
     json_array_append(params, result);
 
-    dict_iterator *iter = dict_get_iterator(obj->sessions);
+    dict_iterator *iter = dict_get_iterator(obj->sessions); 
     while ((entry = dict_next(iter)) != NULL) {
-        send_notify(entry->key, "deals.update", params);
+        send_notify(entry->key, "deals.update", params); /* 交易更新 */
     }
     dict_release_iterator(iter);
     json_decref(params);

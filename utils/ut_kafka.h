@@ -10,7 +10,7 @@
 # include <stdint.h>
 # include <stdbool.h>
 # include <pthread.h>
-# include <librdkafka/rdkafka.h>
+# include <librdkafka/rdkafka.h>  /* “¿¿µkafka  */
 
 # include "nw_evt.h"
 # include "ut_sds.h"

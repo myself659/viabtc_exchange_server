@@ -9,9 +9,9 @@
 # include "aw_config.h"
 
 struct clt_info {
-    bool        auth;
-    uint32_t    user_id;
-    char        *source;
+    bool        auth;   /* 是否认证通过 */
+    uint32_t    user_id; /* 连接对应的用户 */
+    char        *source; /* 来源 */
 };
 
 int init_server(void);

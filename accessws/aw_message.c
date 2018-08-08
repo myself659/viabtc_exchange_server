@@ -79,6 +79,9 @@ static void on_balances_message(sds message, int64_t offset)
     json_decref(msg);
 }
 
+/*
+´´½¨kafka consumer
+*/
 int init_message(void)
 {
     settings.orders.offset = RD_KAFKA_OFFSET_END;

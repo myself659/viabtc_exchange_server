@@ -53,13 +53,17 @@ typedef struct nw_job_type {
     void (*on_release)(void *privdata);
 } nw_job_type;
 
+/* 网络业务  */
 typedef struct nw_job {
     ev_io ev;
     nw_job_type type;
+	/* 事件驱动  */
     struct ev_loop *loop;
+	/* 线程间通信 */
     int pipefd[2];
     pthread_mutex_t lock;
     pthread_cond_t notify;
+	/* job 内存池 */
     nw_cache *cache;
     int thread_count;
     int thread_start;

@@ -6,11 +6,15 @@
 # include "ah_config.h"
 # include "ah_server.h"
 
-static http_svr *svr;
+/*
+接入服务器 全局变量
+*/
+static http_svr *svr; /* http服务 */
 static nw_state *state;
-static dict_t *methods;
+static dict_t *methods; /* 方法 */
 static rpc_clt *listener;
 
+/*  me rpc调用 */
 static rpc_clt *matchengine;
 static rpc_clt *marketprice;
 static rpc_clt *readhistory;
@@ -21,6 +25,7 @@ struct state_info {
     int64_t  request_id;
 };
 
+/* rpc信息 */
 struct request_info {
     rpc_clt *clt;
     uint32_t cmd;
@@ -62,6 +67,11 @@ static void reply_time_out(nw_ses *ses, int64_t id)
     reply_error(ses, id, 5, "service timeout", 504);
 }
 
+
+/* 
+处理http请求
+报文格式是关系
+*/
 static int on_http_request(nw_ses *ses, http_request_t *request)
 {
     log_trace("new http request, url: %s, method: %u", request->url, request->method);
@@ -86,13 +96,19 @@ static int on_http_request(nw_ses *ses, http_request_t *request)
     if (!params || !json_is_array(params)) {
         goto decode_error;
     }
+	/*
+	id: int 
+	method: string 
+	params: struct 
+	*/
     log_trace("from: %s body: %s", nw_sock_human_addr(&ses->peer_addr), request->body);
-
+	
     dict_entry *entry = dict_find(methods, json_string_value(method));
     if (entry == NULL) {
         reply_not_found(ses, json_integer_value(id));
     } else {
         struct request_info *req = entry->val;
+		// rpc连接
         if (!rpc_clt_connected(req->clt)) {
             reply_internal_error(ses);
             json_decref(body);
@@ -101,17 +117,17 @@ static int on_http_request(nw_ses *ses, http_request_t *request)
 
         nw_state_entry *entry = nw_state_add(state, settings.timeout, 0);
         struct state_info *info = entry->data;
-        info->ses = ses;
-        info->ses_id = ses->id;
-        info->request_id = json_integer_value(id);
+        info->ses = ses; /* 状态关联会话 */
+        info->ses_id = ses->id; /* 网络会话id */
+        info->request_id = json_integer_value(id); /* 请求id */
 
         rpc_pkg pkg;
         memset(&pkg, 0, sizeof(pkg));
         pkg.pkg_type  = RPC_PKG_TYPE_REQUEST;
-        pkg.command   = req->cmd;
+        pkg.command   = req->cmd; /* RPC命令  */
         pkg.sequence  = entry->id;
         pkg.req_id    = json_integer_value(id);
-        pkg.body      = json_dumps(params, 0);
+        pkg.body      = json_dumps(params, 0); /* 请求参数 */
         pkg.body_size = strlen(pkg.body);
 
         rpc_clt_send(req->clt, &pkg);
@@ -183,7 +199,9 @@ static void on_backend_connect(nw_ses *ses, bool result)
         log_info("connect %s:%s fail", clt->name, nw_sock_human_addr(&ses->peer_addr));
     }
 }
-
+/*
+rpc 返回结果处理
+*/
 static void on_backend_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
 {
     log_debug("recv pkg from: %s, cmd: %u, sequence: %u",
@@ -191,8 +209,10 @@ static void on_backend_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
     nw_state_entry *entry = nw_state_get(state, pkg->sequence);
     if (entry) {
         struct state_info *info = entry->data;
+		/* 会话id检查 */
         if (info->ses->id == info->ses_id) {
             log_trace("send response to: %s", nw_sock_human_addr(&info->ses->peer_addr));
+			/* 返回http response */
             send_http_response_simple(info->ses, 200, pkg->body, pkg->body_size);
         }
         nw_state_del(state, pkg->sequence);
@@ -265,7 +285,7 @@ static int init_methods_handler(void)
     ERR_RET_LN(add_handler("balance.update", matchengine, CMD_BALANCE_UPDATE));
     ERR_RET_LN(add_handler("balance.history", readhistory, CMD_BALANCE_HISTORY));
 
-    ERR_RET_LN(add_handler("order.put_limit", matchengine, CMD_ORDER_PUT_LIMIT));
+    ERR_RET_LN(add_handler("order.put_limit", matchengine, CMD_ORDER_PUT_LIMIT)); /* 权限检查 */
     ERR_RET_LN(add_handler("order.put_market", matchengine, CMD_ORDER_PUT_MARKET));
     ERR_RET_LN(add_handler("order.cancel", matchengine, CMD_ORDER_CANCEL));
     ERR_RET_LN(add_handler("order.book", matchengine, CMD_ORDER_BOOK));
@@ -297,7 +317,7 @@ int init_server(void)
     dt.key_dup = dict_key_dup;
     dt.val_dup = dict_val_dup;
     dt.key_destructor = dict_key_free;
-    dt.val_destructor = dict_val_free;
+    dt.val_destructor = dict_val_free; /* value可能会没有释放  */
     methods = dict_create(&dt, 64);
     if (methods == NULL)
         return -__LINE__;
@@ -311,7 +331,7 @@ int init_server(void)
 
     rpc_clt_type ct;
     memset(&ct, 0, sizeof(ct));
-    ct.on_connect = on_backend_connect;
+    ct.on_connect = on_backend_connect;  /* 连接建立回调 */
     ct.on_recv_pkg = on_backend_recv_pkg;
     matchengine = rpc_clt_create(&settings.matchengine, &ct);
     if (matchengine == NULL)
@@ -331,6 +351,7 @@ int init_server(void)
     if (rpc_clt_start(readhistory) < 0)
         return -__LINE__;
 
+	/* 依赖rpc，启动http server */
     svr = http_svr_create(&settings.svr, on_http_request);
     if (svr == NULL)
         return -__LINE__;

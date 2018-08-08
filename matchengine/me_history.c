@@ -9,7 +9,7 @@
 
 static MYSQL *mysql_conn;
 static nw_job *job;
-static dict_t *dict_sql;
+static dict_t *dict_sql; /* balance  order sql 执行语句 */
 static nw_timer timer;
 
 enum {
@@ -61,6 +61,7 @@ static void on_job(nw_job_entry *entry, void *privdata)
         int ret = mysql_real_query(conn, sql, sdslen(sql));
         if (ret != 0 && mysql_errno(conn) != 1062) {
             log_fatal("exec sql: %s fail: %d %s", sql, mysql_errno(conn), mysql_error(conn));
+			/* microsecond 微秒 */
             usleep(1000 * 1000);
             continue;
         }
@@ -84,6 +85,7 @@ static void on_timer(nw_timer *t, void *privdata)
     dict_iterator *iter = dict_get_iterator(dict_sql);
     dict_entry *entry;
     while ((entry = dict_next(iter)) != NULL) {
+		/* 添加业务 */
         nw_job_add(job, 0, entry->val);
         dict_delete(dict_sql, entry->key);
         count++;
@@ -310,7 +312,7 @@ static int append_user_balance(double t, uint32_t user_id, const char *asset, co
         sql = sdscatprintf(sql, ", ");
     }
 
-    char buf[10 * 1024];
+    char buf[16 * 1024];
     sql = sdscatprintf(sql, "(NULL, %f, %u, '%s', '%s', ", t, user_id, asset, business);
     sql = sql_append_mpd(sql, change, true);
     sql = sql_append_mpd(sql, balance, true);
@@ -330,11 +332,24 @@ int append_order_history(order_t *order)
     return 0;
 }
 
-int append_order_deal_history(double t, uint64_t deal_id, order_t *ask, int ask_role, order_t *bid, int bid_role, mpd_t *price, mpd_t *amount, mpd_t *deal, mpd_t *ask_fee, mpd_t *bid_fee)
+int append_order_deal_history(double t,  /* 成交时间 */
+									uint64_t deal_id, 
+									order_t *ask, 
+									int ask_role, 
+									order_t *bid, 
+									int bid_role, 
+									mpd_t *price, 
+									mpd_t *amount, 
+									mpd_t *deal, 
+									mpd_t *ask_fee, 
+									mpd_t *bid_fee)
 {
+	/* 由逻辑来处理 */
     append_order_deal(t, ask->user_id, deal_id, ask->id, bid->id, ask_role, price, amount, deal, ask_fee, bid_fee);
     append_order_deal(t, bid->user_id, deal_id, bid->id, ask->id, bid_role, price, amount, deal, bid_fee, ask_fee);
 
+	/* 破坏交易的原子性 */
+	/* 这一部分处理可以延迟处理 */
     append_user_deal(t, ask->user_id, ask->market, deal_id, ask->id, bid->id, ask->side, ask_role, price, amount, deal, ask_fee, bid_fee);
     append_user_deal(t, bid->user_id, ask->market, deal_id, bid->id, ask->id, bid->side, bid_role, price, amount, deal, bid_fee, ask_fee);
 

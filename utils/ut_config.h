@@ -9,7 +9,7 @@
 # include <stddef.h>
 # include <stdint.h>
 # include <stdbool.h>
-# include <jansson.h>
+# include <jansson.h> /*  “¿¿µjansson */
 
 # include "nw_svr.h"
 # include "nw_clt.h"

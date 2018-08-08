@@ -9,6 +9,9 @@
 # include <stdint.h>
 # include <stddef.h>
 
+/*
+dict表项 desc 
+*/
 typedef struct dict_entry {
     void *key;
     void *val;
@@ -25,8 +28,11 @@ typedef struct dict_types {
     void (*val_destructor)(void *val);
 } dict_types;
 
+/*
+dict  desc 
+*/
 typedef struct dict_t {
-    dict_entry **table;
+    dict_entry **table; /* 指针的数组 */
     dict_types type;
     uint32_t size;
     uint32_t mask;
@@ -35,6 +41,9 @@ typedef struct dict_t {
     uint64_t id_clear;
 } dict_t;
 
+/*
+dict iterator
+*/
 typedef struct dict_iterator {
     dict_t *dt;
     int64_t index;

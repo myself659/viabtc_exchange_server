@@ -28,6 +28,9 @@ static void market_dict_key_free(void *key)
     free(key);
 }
 
+/*
+市场信息
+*/
 int init_trade(void)
 {
     dict_types type;

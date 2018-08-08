@@ -123,7 +123,7 @@ int send_success(nw_ses *ses, uint64_t id)
 
     return ret;
 }
-
+/* 发送通知 */
 int send_notify(nw_ses *ses, const char *method, json_t *params)
 {
     json_t *notify = json_object();
@@ -198,7 +198,7 @@ static int on_method_kline_query(nw_ses *ses, uint64_t id, struct clt_info *info
     nw_state_entry *entry = nw_state_add(state_context, settings.backend_timeout, 0);
     struct state_data *state = entry->data;
     state->ses = ses;
-    state->ses_id = ses->id;
+    state->ses_id = ses->id; /* 更新id */
     state->request_id = id;
     state->cache_key = key;
 
@@ -571,6 +571,13 @@ static int on_method_deals_unsubscribe(nw_ses *ses, uint64_t id, struct clt_info
     return send_success(ses, id);
 }
 
+/*
+ses 网络连接会话
+id  
+info 用户信息 
+params 参数
+
+*/
 static int on_method_order_query(nw_ses *ses, uint64_t id, struct clt_info *info, json_t *params)
 {
     if (!rpc_clt_connected(matchengine))
@@ -580,15 +587,17 @@ static int on_method_order_query(nw_ses *ses, uint64_t id, struct clt_info *info
         return send_error_require_auth(ses, id);
     if (json_array_size(params) != 3)
         return send_error_invalid_argument(ses, id);
-
+	/* 市场 */
     const char *market = json_string_value(json_array_get(params, 0));
     if (market == NULL)
         return send_error_invalid_argument(ses, id);
     if (!json_is_integer(json_array_get(params, 1)))
         return send_error_invalid_argument(ses, id);
+	/* 偏移量 */
     int offset = json_integer_value(json_array_get(params, 1));
     if (!json_is_integer(json_array_get(params, 2)))
         return send_error_invalid_argument(ses, id);
+	/* 限制数量 */
     int limit = json_integer_value(json_array_get(params, 2));
 
     json_t *trade_params = json_array();
@@ -787,23 +796,40 @@ static int on_method_asset_unsubscribe(nw_ses *ses, uint64_t id, struct clt_info
     return send_success(ses, id);
 }
 
+/* 
+接收报文分发处理 
+nw_ses *ses 网络连接
+const char *remote 
+const char *url 
+void *message 消息地址
+size_t size   消息大小
+*/
 static int on_message(nw_ses *ses, const char *remote, const char *url, void *message, size_t size)
 {
     struct clt_info *info = ws_ses_privdata(ses);
     log_trace("new websocket message from: %"PRIu64":%s, url: %s, size: %zu", ses->id, remote, url, size);
-    json_t *msg = json_loadb(message, size, 0, NULL);
+	/*
+	解析json
+	*/
+	json_t *msg = json_loadb(message, size, 0, NULL);
     if (msg == NULL) {
         goto decode_error;
     }
-
+	/*
+	请求id，由请求端生成，是不是用户id呢
+	*/
     json_t *id = json_object_get(msg, "id");
     if (!id || !json_is_integer(id)) {
         goto decode_error;
     }
+	/*
+	用于分发处理
+	*/
     json_t *method = json_object_get(msg, "method");
     if (!method || !json_is_string(method)) {
         goto decode_error;
     }
+	/* 参数 */
     json_t *params = json_object_get(msg, "params");
     if (!params || !json_is_array(params)) {
         goto decode_error;
@@ -813,10 +839,12 @@ static int on_message(nw_ses *ses, const char *remote, const char *url, void *me
     log_trace("remote: %"PRIu64":%s message: %s", ses->id, remote, _msg);
 
     uint64_t _id = json_integer_value(id);
+	/* json内容转字符串 */
     const char *_method = json_string_value(method);
     dict_entry *entry = dict_find(method_map, _method);
     if (entry) {
         on_request_method handler = entry->val;
+		/* 调用回调 */
         int ret = handler(ses, _id, info, params);
         if (ret < 0) {
             log_error("remote: %"PRIu64":%s, request fail: %d, request: %s", ses->id, remote, ret, _msg);
@@ -903,11 +931,12 @@ static int add_handler(char *method, on_request_method func)
     return 0;
 }
 
+/* websocket 超时处理 */
 static void on_timeout(nw_state_entry *entry)
 {
     log_error("state id: %u timeout", entry->id);
     struct state_data *state = entry->data;
-    if (state->ses->id == state->ses_id) {
+    if (state->ses->id == state->ses_id) { /* 一段时间网络连接id没有更新 */
         send_error_service_timeout(state->ses, state->request_id);
     }
 }
@@ -919,6 +948,9 @@ static void on_release(nw_state_entry *entry)
         sdsfree(state->cache_key);
 }
 
+/*
+websocket server init 
+*/
 static int init_svr(void)
 {
     ws_svr_type type;
@@ -939,7 +971,7 @@ static int init_svr(void)
 
     nw_state_type st;
     memset(&st, 0, sizeof(st));
-    st.on_timeout = on_timeout;
+    st.on_timeout = on_timeout; 
     st.on_release = on_release;
 
     state_context = nw_state_create(&st, sizeof(struct state_data));
@@ -956,7 +988,7 @@ static int init_svr(void)
     method_map = dict_create(&dt, 64);
     if (method_map == NULL)
         return -__LINE__;
-
+	/* websocket API */
     ERR_RET_LN(add_handler("server.ping",       on_method_server_ping));
     ERR_RET_LN(add_handler("server.time",       on_method_server_time));
     ERR_RET_LN(add_handler("server.auth",       on_method_server_auth));
@@ -1008,7 +1040,11 @@ static void on_backend_connect(nw_ses *ses, bool result)
         log_info("connect %s:%s fail", clt->name, nw_sock_human_addr(&ses->peer_addr));
     }
 }
+/* 
 
+rpc报文 
+
+*/
 static void on_backend_recv_pkg(nw_ses *ses, rpc_pkg *pkg)
 {
     log_trace("recv pkg from: %s, cmd: %u, sequence: %u",
@@ -1082,6 +1118,9 @@ static void on_cache_timer(nw_timer *timer, void *privdata)
     dict_clear(backend_cache);
 }
 
+/* 
+RPC client连接
+*/
 static int init_backend(void)
 {
     rpc_clt_type ct;
@@ -1179,7 +1218,7 @@ int init_server(void)
 {
     ERR_RET(init_svr());
     ERR_RET(init_backend());
-    ERR_RET(init_listener_clt());
+    ERR_RET(init_listener_clt()); /* 多余代码，还是有缺失?  */
 
     return 0;
 }

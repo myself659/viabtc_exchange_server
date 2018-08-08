@@ -15,6 +15,9 @@
 # define RPC_PKG_TYPE_REPLY   1
 # define RPC_PKG_TYPE_PUSH    2
 
+/*
+rpc 报文格式 
+*/
 # pragma pack(1)
 typedef struct rpc_pkg {
     uint32_t magic;
@@ -27,7 +30,7 @@ typedef struct rpc_pkg {
     uint32_t body_size;
     uint16_t ext_size;
     void   * ext;
-    void   * body;
+    void   * body;  /* body在报文前面 */
 } rpc_pkg;
 # pragma pack()
 

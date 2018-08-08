@@ -11,14 +11,21 @@
 # include "nw_ses.h"
 # include "http_parser.h"
 
+/*
+http request 
+*/
 typedef struct http_request_t {
     uint16_t    version_major;
     uint16_t    version_minor;
     uint32_t    method;
-    dict_t      *headers;
+    dict_t      *headers; /* http header kv´æ´¢ */
     sds         url;
     sds         body;
 } http_request_t;
+
+/*
+http response  
+*/
 
 typedef struct http_response_t {
     uint32_t    status;

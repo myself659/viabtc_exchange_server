@@ -37,8 +37,10 @@
 # include "ut_rpc_cmd.h"
 # include "ut_http_svr.h"
 
+/* 前面是socket类型后面是地址信息，unix socket是文件信息  */
 # define AH_LISTENER_BIND   "seqpacket@/tmp/accesshttp_listener.sock"
 
+/* 服务器配置 */
 struct settings {
     process_cfg         process;
     log_cfg             log;
@@ -51,7 +53,7 @@ struct settings {
     double              timeout;
     int                 worker_num;
 };
-
+/* 外部访问 */
 extern struct settings settings;
 int init_config(const char *path);
 

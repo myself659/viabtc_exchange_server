@@ -913,9 +913,11 @@ bool market_exist(const char *market)
     return false;
 }
 
+/* k线信息获取  */
 static struct kline_info *get_last_kline(dict_t *dict, time_t start, time_t end, int interval)
 {
     for (; start >= end; start -= interval) {
+		/* 获取最新一个k线信息即可 */
         dict_entry *entry = dict_find(dict, &start);
         if (entry) {
             return entry->val;

@@ -24,6 +24,7 @@ typedef struct ws_svr_cfg {
     char *origin;
 } ws_svr_cfg;
 
+/* websocket 服务回调定义 */
 typedef struct ws_svr_type {
     void (*on_upgrade)(nw_ses *ses, const char *remote);
     void (*on_close)(nw_ses *ses, const char *remote);

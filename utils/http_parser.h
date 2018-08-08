@@ -322,7 +322,7 @@ struct http_parser {
 
 struct http_parser_settings {
   http_cb      on_message_begin;
-  http_data_cb on_url;
+  http_data_cb on_url; /* ½âÎöurl´¦Àí */
   http_data_cb on_status;
   http_data_cb on_header_field;
   http_data_cb on_header_value;

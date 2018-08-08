@@ -13,10 +13,10 @@ static dict_t *dict_update;
 static nw_timer timer;
 
 struct update_key {
-    uint32_t    user_id;
-    char        asset[ASSET_NAME_MAX_LEN + 1];
-    char        business[BUSINESS_NAME_MAX_LEN + 1];
-    uint64_t    business_id;
+    uint32_t    user_id; /* 用户id */
+    char        asset[ASSET_NAME_MAX_LEN + 1]; /* 资产名字 */
+    char        business[BUSINESS_NAME_MAX_LEN + 1]; /* 业务 trade  */ 
+    uint64_t    business_id;  /* 业务ID */
 };
 
 struct update_val {
@@ -100,6 +100,7 @@ int update_user_balance(bool real, uint32_t user_id, const char *asset, const ch
     strncpy(key.business, business, sizeof(key.business));
     key.business_id = business_id;
 
+	/* 必须要有记录 这个是一个bug  */
     dict_entry *entry = dict_find(dict_update, &key);
     if (entry) {
         return -1;

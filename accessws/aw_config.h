@@ -39,9 +39,10 @@
 
 # define ASSET_NAME_MAX_LEN     16
 # define MARKET_NAME_MAX_LEN    16
-# define SOURCE_MAX_LEN         32
+# define SOURCE_MAX_LEN         32  /* 改为31 */
 # define INTERVAL_MAX_LEN       16
 
+/* 在代码中配置 不符合配置参数化 */
 # define AW_LISTENER_BIND   "seqpacket@/tmp/accessws_listener.sock"
 
 typedef struct depth_limit_cfg {

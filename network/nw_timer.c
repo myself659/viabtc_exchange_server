@@ -15,6 +15,7 @@ void nw_timer_set(nw_timer *timer, double interval, bool repeated, nw_timer_call
 {
     nw_loop_init();
     if (repeated) {
+		/* intervalµ¥Î»ÊÇs */
         ev_timer_init(&timer->ev, on_timer, interval, interval);
     } else {
         ev_timer_init(&timer->ev, on_timer, interval, 0);

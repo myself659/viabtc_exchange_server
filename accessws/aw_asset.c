@@ -84,7 +84,7 @@ static int on_balance_query_reply(struct state_data *state, json_t *result)
     while ((node = list_next(iter)) != NULL) {
         struct sub_unit *unit = node->value;
         if (strcmp(unit->asset, state->asset) == 0) {
-            send_notify(unit->ses, "asset.update", params);
+            send_notify(unit->ses, "asset.update", params); /* 资产信息ws更新 */
         }
     }
     list_release_iterator(iter);

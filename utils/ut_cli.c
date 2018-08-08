@@ -54,6 +54,7 @@ static void on_recv_pkg(nw_ses *ses, void *data, size_t size)
         dict_entry *entry = dict_find(svr->dict, cmd);
         if (entry) {
             on_cli_cmd callback = entry->val;
+			/* 回调处理 */
             response = callback(argv[0], argc - 1, argv + 1);
         } else {
             response = sdsnew("command not found\n");

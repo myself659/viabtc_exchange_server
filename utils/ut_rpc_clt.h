@@ -10,6 +10,9 @@
 # include "nw_clt.h"
 # include "nw_timer.h"
 
+/* 
+rpc连接配置信息
+*/
 typedef struct rpc_clt_cfg {
     char *name;
     uint32_t addr_count;
@@ -23,15 +26,19 @@ typedef struct rpc_clt_cfg {
     double heartbeat_timeout;
 } rpc_clt_cfg;
 
+/*
+rpc连接动作 
+*/
 typedef struct rpc_clt_type {
     void (*on_connect)(nw_ses *ses, bool result);
     void (*on_recv_pkg)(nw_ses *ses, rpc_pkg *pkg);
     void (*on_recv_fd)(nw_ses *ses, int fd);
 } rpc_clt_type;
 
+/* rpc desc */
 typedef struct rpc_clt {
     char *name;
-    nw_clt *raw_clt;
+    nw_clt *raw_clt; 			/* 网络连接 */
     uint32_t addr_count;
     uint32_t curr_index;
     nw_addr_t *addr_arr;

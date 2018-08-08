@@ -7,6 +7,9 @@
 # include "ut_misc.h"
 # include "ut_http_svr.h"
 
+/* 
+http server  context信息 context是粘合剂
+*/
 struct clt_info {
     nw_ses  *ses;
     double  last_activity;
@@ -52,7 +55,7 @@ static int on_url(http_parser* parser, const char* at, size_t length)
     struct clt_info *info = parser->data;
     if (info->request->url)
         sdsfree(info->request->url);
-    info->request->url = sdsnewlen(at, length);
+    info->request->url = sdsnewlen(at, length); /* url地址 */
 
     return 0;
 }
